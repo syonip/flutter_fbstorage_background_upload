@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.learningsomethingnew.fluttervideo.flutter_video_sharing">
+    package="com.learningsomethingnew.flutter_fbstorage_background_upload">
     <!-- Flutter needs it to communicate with the running application
          to allow setting breakpoints, to provide hot reload, etc.
     -->
