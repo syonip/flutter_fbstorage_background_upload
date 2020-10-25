@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:flutter_ffmpeg/log.dart';
 import 'package:flutter_ffmpeg/media_information.dart';
+import 'package:flutter_ffmpeg/stream_information.dart';
 
 removeExtension(String path) {
   final str = path.substring(0, path.length - 4);
@@ -34,9 +35,7 @@ class EncodingProvider {
     return outDirPath;
   }
 
-  static double getAspectRatio(MediaInformation info) {
-    final streams = info.getStreams();
-    final props = streams[0].getAllProperties();
+  static double getAspectRatio(Map<dynamic, dynamic> props) {
     final int width = props['width'];
     final int height = props['height'];
     final double aspect = height / width;
@@ -65,14 +64,20 @@ class EncodingProvider {
     await _encoder.cancel();
   }
 
-  static Future<MediaInformation> getMediaInformation(String path) async {
+  static Future<Map<dynamic, dynamic>> getMediaInformation(String path) async {
     assert(File(path).existsSync());
 
-    return await _probe.getMediaInformation(path);
+    final info = await _probe.getMediaInformation(path);
+    final streams = info.getStreams();
+    for (var stream in streams) {
+      final props = stream.getAllProperties();
+      if (props['width'] != null) return props;
+    }
+    return null;
   }
 
-  static int getDuration(MediaInformation info) {
-    return info.getAllProperties()['duration'];
+  static int getDuration(Map<dynamic, dynamic> info) {
+    return info['duration_ts'];
   }
 
   static void enableLogCallback(void Function(Log) logCallback) {

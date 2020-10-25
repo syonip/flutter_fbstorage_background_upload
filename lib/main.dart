@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:math';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_ffmpeg/statistics.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'apis/encoding_provider.dart';
@@ -48,30 +50,33 @@ class _MyHomePageState extends State<MyHomePage> {
   int _videoDuration = 0;
   String _processPhase = '';
   final bool _debugMode = false;
+  bool _loading = true;
 
   @override
   void initState() {
+    super.initState();
+
+    _initialize();
+  }
+
+  _initialize() async {
+    await Firebase.initializeApp();
+    setState(() {
+      _loading = false;
+    });
     FirebaseProvider.listenToVideos((newVideos) {
       setState(() {
         _videos = newVideos;
       });
     });
 
-    EncodingProvider.enableStatisticsCallback((int time,
-        int size,
-        double bitrate,
-        double speed,
-        int videoFrameNumber,
-        double videoQuality,
-        double videoFps) {
+    EncodingProvider.enableStatisticsCallback((Statistics stats) {
       if (_canceled) return;
 
       setState(() {
-        _progress = time / _videoDuration;
+        _progress = stats.time / _videoDuration;
       });
     });
-
-    super.initState();
   }
 
   void _onUploadProgress(event) {
@@ -207,7 +212,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _takeVideo() async {
-    var videoFile;
+    File videoFile;
     if (_debugMode) {
       videoFile = File(
           '/storage/emulated/0/Android/data/com.learningsomethingnew.fluttervideo.flutter_video_sharing/files/Pictures/ebbafabc-dcbe-433b-93dd-80e7777ee4704451355941378265171.mp4');
@@ -215,11 +220,15 @@ class _MyHomePageState extends State<MyHomePage> {
       if (_imagePickerActive) return;
 
       _imagePickerActive = true;
-      videoFile = await ImagePicker.pickVideo(source: ImageSource.camera);
+      FilePickerResult result =
+          await FilePicker.platform.pickFiles(type: FileType.video);
+
       _imagePickerActive = false;
 
-      if (videoFile == null) return;
+      if (result == null) return;
+      videoFile = File(result.files.single.path);
     }
+
     setState(() {
       _processing = true;
     });
@@ -286,11 +295,11 @@ class _MyHomePageState extends State<MyHomePage> {
                               mainAxisSize: MainAxisSize.max,
                               children: <Widget>[
                                 Text("${video.videoName}"),
-                                Container(
-                                  margin: new EdgeInsets.only(top: 12.0),
-                                  child: Text(
-                                      'Uploaded ${timeago.format(new DateTime.fromMillisecondsSinceEpoch(video.uploadedAt))}'),
-                                ),
+                                // Container(
+                                //   margin: new EdgeInsets.only(top: 12.0),
+                                //   child: Text(
+                                //       'Uploaded ${timeago.format(new DateTime.fromMillisecondsSinceEpoch(video.uploadedAt))}'),
+                                // ),
                               ],
                             ),
                           ),
@@ -330,7 +339,9 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(child: _processing ? _getProgressBar() : _getListView()),
+      body: _loading
+          ? Center(child: CircularProgressIndicator())
+          : Center(child: _processing ? _getProgressBar() : _getListView()),
       floatingActionButton: FloatingActionButton(
           child: _processing
               ? CircularProgressIndicator(
