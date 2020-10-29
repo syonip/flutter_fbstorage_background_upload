@@ -40,8 +40,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final thumbWidth = 100;
-  final thumbHeight = 150;
+  final thumbWidth = 300;
   List<VideoInfo> _videos = <VideoInfo>[];
   bool _imagePickerActive = false;
   bool _processing = false;
@@ -241,41 +240,42 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: new EdgeInsets.all(10.0),
                 child: Stack(
                   children: <Widget>[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
-                        Stack(
-                          children: <Widget>[
-                            Container(
-                              width: thumbWidth.toDouble(),
-                              height: thumbHeight.toDouble(),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                            ClipRRect(
-                              borderRadius: new BorderRadius.circular(8.0),
-                              child: FadeInImage.memoryNetwork(
-                                placeholder: kTransparentImage,
-                                image: video.thumbUrl,
+                        if (video.thumbUrl != null)
+                          Stack(
+                            children: <Widget>[
+                              Container(
+                                width: thumbWidth.toDouble(),
+                                height:
+                                    video.aspectRatio * thumbWidth.toDouble(),
+                                child:
+                                    Center(child: CircularProgressIndicator()),
                               ),
+                              ClipRRect(
+                                borderRadius: new BorderRadius.circular(8.0),
+                                child: FadeInImage.memoryNetwork(
+                                  placeholder: kTransparentImage,
+                                  image: video.thumbUrl,
+                                ),
+                              ),
+                            ],
+                          ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Row(
+                          children: <Widget>[
+                            Text("${video.videoName}"),
+                            Spacer(),
+                            IconButton(
+                              icon: Icon(Icons.delete),
+                              onPressed: () {
+                                FirebaseProvider.deleteVideo(video.videoName);
+                              },
                             ),
                           ],
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: new EdgeInsets.only(left: 20.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.max,
-                              children: <Widget>[
-                                Text("${video.videoName}"),
-                                // Container(
-                                //   margin: new EdgeInsets.only(top: 12.0),
-                                //   child: Text(
-                                //       'Uploaded ${timeago.format(new DateTime.fromMillisecondsSinceEpoch(video.uploadedAt))}'),
-                                // ),
-                              ],
-                            ),
-                          ),
                         ),
                       ],
                     ),

@@ -13,6 +13,13 @@ class FirebaseProvider {
     });
   }
 
+  static deleteVideo(String videoName) async {
+    await FirebaseFirestore.instance
+        .collection('videos')
+        .doc(videoName)
+        .delete();
+  }
+
   static listenToVideos(callback) async {
     FirebaseFirestore.instance.collection('videos').snapshots().listen((qs) {
       final videos = mapQueryToVideoInfo(qs);
