@@ -222,6 +222,7 @@ class _MyHomePageState extends State<MyHomePage> {
         itemCount: _videos.length,
         itemBuilder: (BuildContext context, int index) {
           final video = _videos[index];
+
           return GestureDetector(
             onTap: () {
               Navigator.push(
@@ -236,46 +237,40 @@ class _MyHomePageState extends State<MyHomePage> {
               );
             },
             child: Card(
-              child: new Container(
-                padding: new EdgeInsets.all(10.0),
-                child: Stack(
+              child: Container(
+                padding: EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        if (video.thumbUrl != null)
-                          Stack(
-                            children: <Widget>[
-                              Container(
-                                width: thumbWidth.toDouble(),
-                                height:
-                                    video.aspectRatio * thumbWidth.toDouble(),
-                                child:
-                                    Center(child: CircularProgressIndicator()),
-                              ),
-                              ClipRRect(
-                                borderRadius: new BorderRadius.circular(8.0),
-                                child: FadeInImage.memoryNetwork(
-                                  placeholder: kTransparentImage,
-                                  image: video.thumbUrl,
-                                ),
-                              ),
-                            ],
+                    if (video.thumbUrl != null)
+                      Stack(
+                        children: <Widget>[
+                          Container(
+                            width: thumbWidth.toDouble(),
+                            height: video.aspectRatio * thumbWidth.toDouble(),
+                            child: Center(child: CircularProgressIndicator()),
                           ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        Row(
-                          children: <Widget>[
-                            Text("${video.videoName}"),
-                            Spacer(),
-                            IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () {
-                                FirebaseProvider.deleteVideo(video.videoName);
-                              },
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8.0),
+                            child: FadeInImage.memoryNetwork(
+                              placeholder: kTransparentImage,
+                              image: video.thumbUrl,
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    Row(
+                      children: <Widget>[
+                        Text("${video.videoName}"),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            FirebaseProvider.deleteVideo(video.videoName);
+                          },
                         ),
                       ],
                     ),
