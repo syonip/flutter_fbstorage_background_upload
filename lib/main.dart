@@ -124,34 +124,6 @@ class _MyHomePageState extends State<MyHomePage> {
     file.writeAsStringSync(updatedContents);
   }
 
-  Future<String> _uploadHLSFiles(dirPath, videoName) async {
-    final videosDir = Directory(dirPath);
-
-    var playlistUrl = '';
-
-    final files = videosDir.listSync();
-    int i = 1;
-    for (FileSystemEntity file in files) {
-      final fileName = p.basename(file.path);
-      final fileExtension = getFileExtension(fileName);
-      if (fileExtension == 'm3u8') _updatePlaylistUrls(file, videoName);
-
-      setState(() {
-        _processPhase = 'Uploading video file $i out of ${files.length}';
-        _progress = 0.0;
-      });
-
-      final downloadUrl = await _uploadFile(file.path, videoName);
-
-      if (fileName == 'master.m3u8') {
-        playlistUrl = downloadUrl;
-      }
-      i++;
-    }
-
-    return playlistUrl;
-  }
-
   Future<void> _processVideo(File rawVideoFile) async {
     final String rand = '${new Random().nextInt(10000)}';
     final videoName = 'video$rand';
@@ -171,22 +143,27 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     final thumbFilePath =
-        await EncodingProvider.getThumb(rawVideoPath, thumbWidth, thumbHeight);
+        await EncodingProvider.getThumb(rawVideoPath, thumbWidth);
 
     setState(() {
       _processPhase = 'Encoding video';
       _progress = 0.0;
     });
 
-    final encodedFilesDir =
-        await EncodingProvider.encodeHLS(rawVideoPath, outDirPath);
-
     setState(() {
       _processPhase = 'Uploading thumbnail to firebase storage';
       _progress = 0.0;
     });
     final thumbUrl = await _uploadFile(thumbFilePath, 'thumbnail');
-    final videoUrl = await _uploadHLSFiles(encodedFilesDir, videoName);
+    setState(() {
+      _processPhase = 'Uploading video to firebase storage';
+      _progress = 0.0;
+    });
+    final videoUrl = await _uploadFile(rawVideoFile.path, '$videoName.mp4');
+    setState(() {
+      _processPhase = 'Saving video metadata to cloud firestore';
+      _progress = 0.0;
+    });
 
     final videoInfo = VideoInfo(
       videoUrl: videoUrl,
@@ -213,21 +190,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _takeVideo() async {
     File videoFile;
-    if (_debugMode) {
-      videoFile = File(
-          '/storage/emulated/0/Android/data/com.learningsomethingnew.fluttervideo.flutter_video_sharing/files/Pictures/ebbafabc-dcbe-433b-93dd-80e7777ee4704451355941378265171.mp4');
-    } else {
-      if (_imagePickerActive) return;
 
-      _imagePickerActive = true;
-      FilePickerResult result =
-          await FilePicker.platform.pickFiles(type: FileType.video);
+    if (_imagePickerActive) return;
 
-      _imagePickerActive = false;
+    _imagePickerActive = true;
+    FilePickerResult result =
+        await FilePicker.platform.pickFiles(type: FileType.video);
 
-      if (result == null) return;
-      videoFile = File(result.files.single.path);
-    }
+    _imagePickerActive = false;
+
+    if (result == null) return;
+    videoFile = File(result.files.single.path);
 
     setState(() {
       _processing = true;
