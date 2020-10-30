@@ -38,3 +38,6 @@ lib/generated_plugin_registrant.dart
 ios/Runner/Config.xcconfig
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+cloud-functions/tests/admin-credentials.json
+cloud-functions/firebase.json
+cloud-functions/.firebaserc
