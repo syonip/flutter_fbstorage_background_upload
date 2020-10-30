@@ -34,6 +34,9 @@ dependencies:
   flutter_ffmpeg: ^0.3.0
   filesize: ^1.0.4
   path_provider: ^1.6.21
+  flutter_uploader: ^2.0.0-beta.3
+  flutter_local_notifications: ^1.4.4+2
+  shared_preferences: ^0.5.8
 
 
 # dependency_overrides:

@@ -6,7 +6,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_ffmpeg/statistics.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_uploader/flutter_uploader.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'apis/encoding_provider.dart';
 import 'apis/firebase_provider.dart';
@@ -14,6 +17,98 @@ import 'package:path/path.dart' as p;
 import 'models/video_info.dart';
 import 'widgets/player.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
+FlutterUploader _uploader = FlutterUploader();
+
+//TODO: go over this
+void backgroundHandler() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Notice these instances belong to a forked isolate.
+  var uploader = FlutterUploader();
+
+  var notifications = FlutterLocalNotificationsPlugin();
+
+  // Only show notifications for unprocessed uploads.
+  SharedPreferences.getInstance().then((preferences) {
+    var processed = preferences.getStringList('processed') ?? <String>[];
+
+    if (Platform.isAndroid) {
+      uploader.progress.listen((progress) {
+        if (processed.contains(progress.taskId)) {
+          return;
+        }
+
+        notifications.show(
+          progress.taskId.hashCode,
+          'FlutterUploader Example',
+          'Upload in Progress',
+          NotificationDetails(
+            AndroidNotificationDetails(
+              'FlutterUploader.Example',
+              'FlutterUploader',
+              'Installed when you activate the Flutter Uploader Example',
+              progress: progress.progress,
+              icon: 'ic_upload',
+              enableVibration: false,
+              importance: Importance.Low,
+              showProgress: true,
+              onlyAlertOnce: true,
+              maxProgress: 100,
+              channelShowBadge: false,
+            ),
+            IOSNotificationDetails(),
+          ),
+        );
+      });
+    }
+
+    uploader.result.listen((result) {
+      if (processed.contains(result.taskId)) {
+        return;
+      }
+
+      processed.add(result.taskId);
+      preferences.setStringList('processed', processed);
+
+      notifications.cancel(result.taskId.hashCode);
+
+      final successful = result.status == UploadTaskStatus.complete;
+
+      var title = 'Upload Complete';
+      if (result.status == UploadTaskStatus.failed) {
+        title = 'Upload Failed';
+      } else if (result.status == UploadTaskStatus.canceled) {
+        title = 'Upload Canceled';
+      }
+
+      notifications
+          .show(
+        result.taskId.hashCode,
+        'FlutterUploader Example',
+        title,
+        NotificationDetails(
+          AndroidNotificationDetails(
+            'FlutterUploader.Example',
+            'FlutterUploader',
+            'Installed when you activate the Flutter Uploader Example',
+            icon: 'ic_upload',
+            enableVibration: !successful,
+            importance: result.status == UploadTaskStatus.failed
+                ? Importance.High
+                : Importance.Min,
+          ),
+          IOSNotificationDetails(
+            presentAlert: true,
+          ),
+        ),
+      )
+          .catchError((e, stack) {
+        print('error while showing notification: $e, $stack');
+      });
+    });
+  });
+}
 
 void main() => runApp(MyApp());
 
@@ -60,13 +155,39 @@ class _MyHomePageState extends State<MyHomePage> {
 
   _initialize() async {
     await Firebase.initializeApp();
+
+    _uploader.setBackgroundHandler(backgroundHandler);
+
+    var flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    var initializationSettingsAndroid =
+        AndroidInitializationSettings('ic_upload');
+    var initializationSettingsIOS = IOSInitializationSettings(
+      requestSoundPermission: false,
+      requestBadgePermission: false,
+      requestAlertPermission: true,
+      onDidReceiveLocalNotification:
+          (int id, String title, String body, String payload) async {},
+    );
+    var initializationSettings = InitializationSettings(
+        initializationSettingsAndroid, initializationSettingsIOS);
+    flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onSelectNotification: (payload) async {},
+    );
+
     setState(() {
       _loading = false;
     });
-    FirebaseProvider.listenToVideos((newVideos) {
+    FirebaseProvider.listenToVideos((List<VideoInfo> newVideos) {
       setState(() {
         _videos = newVideos;
       });
+      for (VideoInfo video in newVideos) {
+        if (video.uploadUrl != null) {
+          _processVideo(
+              video); // Improvement: process video while waiting for upload url
+        }
+      }
     });
 
     EncodingProvider.enableStatisticsCallback((Statistics stats) {
@@ -102,6 +223,19 @@ class _MyHomePageState extends State<MyHomePage> {
     return videoUrl;
   }
 
+  Future<String> _uploadFileBackground(filePath, uploadUrl) async {
+    final tag = 'upload';
+
+    final upload = RawUpload(
+      url: uploadUrl,
+      path: filePath,
+      method: UploadMethod.PUT,
+      tag: tag,
+    );
+
+    await _uploader.enqueue(upload);
+  }
+
   String getFileExtension(String fileName) {
     final exploded = fileName.split('.');
     return exploded[exploded.length - 1];
@@ -124,15 +258,13 @@ class _MyHomePageState extends State<MyHomePage> {
     file.writeAsStringSync(updatedContents);
   }
 
-  Future<void> _processVideo(File rawVideoFile) async {
-    final String rand = '${new Random().nextInt(10000)}';
-    final videoName = 'video$rand';
+  Future<void> _processVideo(VideoInfo video) async {
     final Directory extDir = await getApplicationDocumentsDirectory();
-    final outDirPath = '${extDir.path}/Videos/$videoName';
+    final outDirPath = '${extDir.path}/Videos/${video.videoName}';
     final videosDir = new Directory(outDirPath);
     videosDir.createSync(recursive: true);
 
-    final rawVideoPath = rawVideoFile.path;
+    final rawVideoPath = video.rawVideoPath;
     final info = await EncodingProvider.getMediaInformation(rawVideoPath);
     final aspectRatio = EncodingProvider.getAspectRatio(info);
 
@@ -145,52 +277,45 @@ class _MyHomePageState extends State<MyHomePage> {
     final thumbFilePath =
         await EncodingProvider.getThumb(rawVideoPath, thumbWidth);
 
-    setState(() {
-      _processPhase = 'Encoding video';
-      _progress = 0.0;
-    });
-
-    setState(() {
-      _processPhase = 'Uploading thumbnail to firebase storage';
-      _progress = 0.0;
-    });
     final thumbUrl = await _uploadFile(thumbFilePath, 'thumbnail');
     setState(() {
-      _processPhase = 'Uploading video to firebase storage';
-      _progress = 0.0;
-    });
-    final videoUrl = await _uploadFile(rawVideoFile.path, '$videoName.mp4');
-    setState(() {
-      _processPhase = 'Saving video metadata to cloud firestore';
+      _processPhase = 'Uploading video to firebase storage in the';
       _progress = 0.0;
     });
 
-    final videoInfo = VideoInfo(
-      videoUrl: videoUrl,
-      thumbUrl: thumbUrl,
-      coverUrl: thumbUrl,
-      aspectRatio: aspectRatio,
-      uploadedAt: DateTime.now().millisecondsSinceEpoch,
-      videoName: videoName,
-    );
+    final uploadTask =
+        await _uploadFileBackground(video.rawVideoPath, video.uploadUrl);
 
-    setState(() {
-      _processPhase = 'Saving video metadata to cloud firestore';
-      _progress = 0.0;
-    });
+    // TODO: move all this to after the task is complete
+    // setState(() {
+    //   _processPhase = 'Saving video metadata to cloud firestore';
+    //   _progress = 0.0;
+    // });
 
-    await FirebaseProvider.saveVideo(videoInfo);
+    // final videoInfo = VideoInfo(
+    //   videoUrl: videoUrl,
+    //   thumbUrl: thumbUrl,
+    //   coverUrl: thumbUrl,
+    //   aspectRatio: aspectRatio,
+    //   uploadedAt: DateTime.now().millisecondsSinceEpoch,
+    //   videoName: video.videoName,
+    // );
 
-    setState(() {
-      _processPhase = '';
-      _progress = 0.0;
-      _processing = false;
-    });
+    // setState(() {
+    //   _processPhase = 'Saving video metadata to cloud firestore';
+    //   _progress = 0.0;
+    // });
+
+    // await FirebaseProvider.saveVideo(videoInfo);
+
+    // setState(() {
+    //   _processPhase = '';
+    //   _progress = 0.0;
+    //   _processing = false;
+    // });
   }
 
   void _takeVideo() async {
-    File videoFile;
-
     if (_imagePickerActive) return;
 
     _imagePickerActive = true;
@@ -200,14 +325,16 @@ class _MyHomePageState extends State<MyHomePage> {
     _imagePickerActive = false;
 
     if (result == null) return;
-    videoFile = File(result.files.single.path);
 
     setState(() {
       _processing = true;
     });
 
     try {
-      await _processVideo(videoFile);
+      final String rand = '${new Random().nextInt(10000)}';
+      final videoName = 'video$rand';
+      await FirebaseProvider.createNewVideo(
+          videoName, result.files.single.path);
     } catch (e) {
       print('${e.toString()}');
     } finally {
