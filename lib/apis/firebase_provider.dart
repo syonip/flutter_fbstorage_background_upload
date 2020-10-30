@@ -2,17 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_video_sharing/models/video_info.dart';
 
 class FirebaseProvider {
-  static saveVideo(VideoInfo video) async {
-    await FirebaseFirestore.instance
-        .collection('videos')
-        .doc(video.videoName)
-        .set({
-      'videoUrl': video.videoUrl,
-      'thumbUrl': video.thumbUrl,
-      'coverUrl': video.coverUrl,
-      'aspectRatio': video.aspectRatio,
-      'uploadedAt': video.uploadedAt,
-      'videoName': video.videoName,
+  static createNewVideo(String videoName) async {
+    await FirebaseFirestore.instance.collection('videos').doc(videoName).set({
+      'finishedProcessing': false,
+      'videoName': videoName,
     });
   }
 
@@ -40,6 +33,7 @@ class FirebaseProvider {
         aspectRatio: data['aspectRatio'],
         videoName: data['videoName'],
         uploadedAt: data['uploadedAt'],
+        finishedProcessing: data['finishedProcessing'] == true,
       );
     }).toList();
   }

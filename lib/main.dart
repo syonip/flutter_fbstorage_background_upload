@@ -94,6 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final StorageReference ref =
         FirebaseStorage.instance.ref().child(folderName).child(basename);
+
     StorageUploadTask uploadTask = ref.putFile(file);
     uploadTask.events.listen(_onUploadProgress);
     StorageTaskSnapshot taskSnapshot = await uploadTask.onComplete;
@@ -225,6 +226,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
           return GestureDetector(
             onTap: () {
+              if (!video.finishedProcessing) return;
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -258,6 +261,11 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                         ],
+                      ),
+                    if (!video.finishedProcessing)
+                      Container(
+                        margin: new EdgeInsets.only(top: 12.0),
+                        child: Text('Processing...'),
                       ),
                     SizedBox(
                       height: 20,
