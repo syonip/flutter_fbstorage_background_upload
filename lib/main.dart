@@ -287,6 +287,8 @@ class _MyHomePageState extends State<MyHomePage> {
         await _uploadFileBackground(video.rawVideoPath, video.uploadUrl);
 
     // TODO: move all this to after the task is complete
+    // TODO: save thumbUrl in shared prefs?
+
     // setState(() {
     //   _processPhase = 'Saving video metadata to cloud firestore';
     //   _progress = 0.0;
