@@ -41,3 +41,4 @@ ios/Runner/GoogleService-Info.plist
 cloud-functions/tests/admin-credentials.json
 cloud-functions/firebase.json
 cloud-functions/.firebaserc
+.flutter-plugins-dependencies
