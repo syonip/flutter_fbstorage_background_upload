@@ -50,14 +50,10 @@ exports.newStorageFile = functions.storage.object().onFinalize(async (object) =>
 
 
     const bucket = admin.storage().bucket(fileBucket)
-    // const fileName = `${context.params.videoId}.mp4`
     const videoFile = bucket.file(filePath)
-    var expires = new Date()
-    expires.setTime(expires.getTime() + (60 * 60 * 1000))
     console.log(`Getting signed Url for videoFile: ${videoFile.name}`)
     const downloadUrlArr = await videoFile.getSignedUrl({
         action: 'read',
-        expires: expires
     })
     const downloadUrl = downloadUrlArr[0]
     console.log(`got signed url: ${downloadUrl}`)
