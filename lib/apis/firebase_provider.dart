@@ -15,6 +15,13 @@ class FirebaseProvider {
     });
   }
 
+  static saveDownloadUrl(String videoName, String downloadUrl) async {
+    await FirebaseFirestore.instance.collection('videos').doc(videoName).set({
+      'videoUrl': downloadUrl,
+      'finishedProcessing': true,
+    }, SetOptions(merge: true));
+  }
+
   static createNewVideo(String videoName, String rawVideoPath) async {
     await FirebaseFirestore.instance.collection('videos').doc(videoName).set({
       'finishedProcessing': false,
@@ -48,6 +55,7 @@ class FirebaseProvider {
         videoName: data['videoName'],
         uploadedAt: data['uploadedAt'],
         finishedProcessing: data['finishedProcessing'] == true,
+        uploadComplete: data['uploadComplete'] == true,
         uploadUrl: data['uploadUrl'],
         rawVideoPath: data['rawVideoPath'],
       );

@@ -8,6 +8,7 @@ class VideoInfo {
   bool finishedProcessing;
   String uploadUrl;
   String rawVideoPath;
+  bool uploadComplete;
 
   VideoInfo({
     this.videoUrl,
@@ -19,5 +20,6 @@ class VideoInfo {
     this.finishedProcessing,
     this.uploadUrl,
     this.rawVideoPath,
+    this.uploadComplete,
   });
 }

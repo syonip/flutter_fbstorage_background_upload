@@ -41,8 +41,8 @@ void backgroundHandler() {
 
         notifications.show(
           progress.taskId.hashCode,
-          'FlutterUploader Example',
-          'Upload in Progress',
+          'Background Uploading',
+          'Upload in progress...',
           NotificationDetails(
             AndroidNotificationDetails(
               'FlutterUploader.Example',
@@ -183,7 +183,9 @@ class _MyHomePageState extends State<MyHomePage> {
         _videos = newVideos;
       });
       for (VideoInfo video in newVideos) {
-        if (video.uploadUrl != null) {
+        if (video.uploadComplete) {
+          _saveDownloadUrl(video);
+        } else if (video.uploadUrl != null) {
           // TODO: some race condition, could start uploading again before getting new data from firebase
           _processVideo(
               video); // Improvement: process video while waiting for upload url
@@ -259,6 +261,14 @@ class _MyHomePageState extends State<MyHomePage> {
     file.writeAsStringSync(updatedContents);
   }
 
+  Future<void> _saveDownloadUrl(VideoInfo video) async {
+    final StorageReference ref =
+        FirebaseStorage.instance.ref().child('${video.videoName}.mp4');
+
+    String url = await ref.getDownloadURL();
+    await FirebaseProvider.saveDownloadUrl(video.videoName, url);
+  }
+
   Future<void> _processVideo(VideoInfo video) async {
     final Directory extDir = await getApplicationDocumentsDirectory();
     final outDirPath = '${extDir.path}/Videos/${video.videoName}';
@@ -266,6 +276,7 @@ class _MyHomePageState extends State<MyHomePage> {
     videosDir.createSync(recursive: true);
 
     final rawVideoPath = video.rawVideoPath;
+    if (!File(rawVideoPath).existsSync()) return;
     final info = await EncodingProvider.getMediaInformation(rawVideoPath);
     final aspectRatio = EncodingProvider.getAspectRatio(info);
 
@@ -402,14 +413,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     Row(
                       children: <Widget>[
-                        Text("${video.videoName}"),
-                        Spacer(),
                         IconButton(
                           icon: Icon(Icons.delete),
                           onPressed: () {
                             FirebaseProvider.deleteVideo(video.videoName);
                           },
                         ),
+                        Text("${video.videoName}"),
                       ],
                     ),
                   ],
