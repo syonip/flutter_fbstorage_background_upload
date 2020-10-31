@@ -184,6 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       for (VideoInfo video in newVideos) {
         if (video.uploadUrl != null) {
+          // TODO: some race condition, could start uploading again before getting new data from firebase
           _processVideo(
               video); // Improvement: process video while waiting for upload url
         }
@@ -283,32 +284,32 @@ class _MyHomePageState extends State<MyHomePage> {
       _progress = 0.0;
     });
 
+    setState(() {
+      _processPhase = 'Saving video metadata to cloud firestore';
+      _progress = 0.0;
+    });
+
+    final videoInfo = VideoInfo(
+      thumbUrl: thumbUrl,
+      coverUrl: thumbUrl,
+      aspectRatio: aspectRatio,
+      uploadedAt: DateTime.now().millisecondsSinceEpoch,
+      videoName: video.videoName,
+    );
+    await FirebaseProvider.saveVideo(videoInfo);
+
+    setState(() {
+      _processPhase = 'Starting background upload task';
+      _progress = 0.0;
+    });
+
     final uploadTask =
         await _uploadFileBackground(video.rawVideoPath, video.uploadUrl);
 
-    // TODO: move all this to after the task is complete
-    // TODO: save thumbUrl in shared prefs?
-
-    // setState(() {
-    //   _processPhase = 'Saving video metadata to cloud firestore';
-    //   _progress = 0.0;
-    // });
-
-    // final videoInfo = VideoInfo(
-    //   videoUrl: videoUrl,
-    //   thumbUrl: thumbUrl,
-    //   coverUrl: thumbUrl,
-    //   aspectRatio: aspectRatio,
-    //   uploadedAt: DateTime.now().millisecondsSinceEpoch,
-    //   videoName: video.videoName,
-    // );
-
-    // setState(() {
-    //   _processPhase = 'Saving video metadata to cloud firestore';
-    //   _progress = 0.0;
-    // });
-
-    // await FirebaseProvider.saveVideo(videoInfo);
+    setState(() {
+      _processPhase = 'Waiting for processing completed status from cloud';
+      _progress = 0.0;
+    });
 
     // setState(() {
     //   _processPhase = '';

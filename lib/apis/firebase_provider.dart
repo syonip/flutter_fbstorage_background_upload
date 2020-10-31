@@ -7,13 +7,11 @@ class FirebaseProvider {
         .collection('videos')
         .doc(video.videoName)
         .set({
-      'videoUrl': video.videoUrl,
       'thumbUrl': video.thumbUrl,
       'coverUrl': video.coverUrl,
       'aspectRatio': video.aspectRatio,
       'uploadedAt': video.uploadedAt,
       'videoName': video.videoName,
-      'finishedProcessing': true,
     });
   }
 
