@@ -20,7 +20,6 @@ import 'package:timeago/timeago.dart' as timeago;
 
 FlutterUploader _uploader = FlutterUploader();
 
-//TODO: go over this
 void backgroundHandler() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -85,7 +84,7 @@ void backgroundHandler() {
       notifications
           .show(
         result.taskId.hashCode,
-        'FlutterUploader Example',
+        'Background Uploading',
         title,
         NotificationDetails(
           AndroidNotificationDetails(
@@ -186,9 +185,7 @@ class _MyHomePageState extends State<MyHomePage> {
         if (video.uploadComplete) {
           _saveDownloadUrl(video);
         } else if (video.uploadUrl != null) {
-          // TODO: some race condition, could start uploading again before getting new data from firebase
-          _processVideo(
-              video); // Improvement: process video while waiting for upload url
+          _processVideo(video);
         }
       }
     });
@@ -290,10 +287,6 @@ class _MyHomePageState extends State<MyHomePage> {
         await EncodingProvider.getThumb(rawVideoPath, thumbWidth);
 
     final thumbUrl = await _uploadFile(thumbFilePath, 'thumbnail');
-    setState(() {
-      _processPhase = 'Uploading video to firebase storage in the';
-      _progress = 0.0;
-    });
 
     setState(() {
       _processPhase = 'Saving video metadata to cloud firestore';
@@ -321,12 +314,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _processPhase = 'Waiting for processing completed status from cloud';
       _progress = 0.0;
     });
-
-    // setState(() {
-    //   _processPhase = '';
-    //   _progress = 0.0;
-    //   _processing = false;
-    // });
   }
 
   void _takeVideo() async {

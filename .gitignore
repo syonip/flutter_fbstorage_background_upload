@@ -42,3 +42,4 @@ cloud-functions/tests/admin-credentials.json
 cloud-functions/firebase.json
 cloud-functions/.firebaserc
 .flutter-plugins-dependencies
+ios/Flutter/.last_build_id
